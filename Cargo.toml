@@ -1,0 +1,23 @@
+[package]
+  publish = false # NEVER PUBLICLY PUBLISH
+  authors = [ "Brandon Thomas <bt@brand.io>", "Brandon Thomas <echelon@gmail.com>" ]
+  description = "Paint with Lasers"
+  license = "None at the moment"
+  name = "paint-with-lasers"
+  readme = "README.md"
+  repository = "https://github.com/echelon/paint-with-lasers"
+  version = "0.0.1"
+  #build = "build.rs"
+
+[[bin]]
+  name = "paint"
+
+[dependencies]
+  camera_capture = "0.3.*"
+  opencv = "0.2.*"
+
+[build-dependencies]
+  gcc = "0.3"
+  glob = "0.2"
+  pkg-config = "0.3"
+
