@@ -3,17 +3,32 @@
 
 extern crate camera_capture;
 extern crate image;
+extern crate iron;
+extern crate lase;
 extern crate opencv;
 extern crate piston_window;
+extern crate router;
+extern crate serde;
+extern crate serde_json;
 extern crate texture;
+
+#[macro_use] extern crate serde_derive;
+
+mod laser;
+mod server;
 
 use opencv::core;
 use opencv::highgui;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use image::ConvertBuffer;
+use server::start_http_server;
 
 fn main() {
   println!("TODO: Everything.");
+  start_http_server();
+}
+
+fn unused_webcam() {
   let window: PistonWindow =
     WindowSettings::new("piston: image", [300, 300])
         .exit_on_esc(true)
