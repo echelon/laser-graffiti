@@ -21,6 +21,7 @@
   piston-texture = "0.4"
   piston_window = "0.40"
   router = "0.5"
+  rscam = "0.5.2"
   serde = "1.0"
   serde_derive = "1.0"
   serde_json = "1.0"

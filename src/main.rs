@@ -8,6 +8,7 @@ extern crate lase;
 extern crate opencv;
 extern crate piston_window;
 extern crate router;
+extern crate rscam;
 extern crate serde;
 extern crate serde_json;
 extern crate texture;
@@ -22,15 +23,22 @@ use opencv::highgui;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use image::ConvertBuffer;
 use server::start_http_server;
+use rscam::Frame;
+
+type Image = image::ImageBuffer<image::Rgb<u8>, Frame>;
+
+const WIDTH: u32 = 1280;
+const HEIGHT: u32 = 720;
 
 fn main() {
   println!("TODO: Everything.");
-  start_http_server();
+  unused_webcam();
+  //start_http_server();
 }
 
 fn unused_webcam() {
   let window: PistonWindow =
-    WindowSettings::new("piston: image", [300, 300])
+    WindowSettings::new("piston: image", [WIDTH, HEIGHT])
         .exit_on_esc(true)
         .build()
         .unwrap();
@@ -40,6 +48,8 @@ fn unused_webcam() {
   let imgthread = std::thread::spawn(move || {
     let cam = camera_capture::create(0).unwrap()
         .fps(30.0)
+        .unwrap()
+        .resolution(WIDTH, HEIGHT)
         .unwrap()
         .start()
         .unwrap();
