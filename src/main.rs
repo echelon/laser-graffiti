@@ -49,7 +49,7 @@ fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
       let mut pix2 = rgba.clone();
       pix2.apply(|pix: u8| {
 
-        pix
+        pix.saturating_sub(100)
       });
       //let pix = new_image.get_pixel(0, 0);
 
@@ -79,7 +79,7 @@ fn unused_webcam() {
         .unwrap();
     for frame in cam {
       let grayscale = to_grayscale(frame);
-      let converted = grayscale.convert();
+      let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>>  = grayscale.convert();
       if let Err(_) = sender.send(grayscale) {
         break;
       }
