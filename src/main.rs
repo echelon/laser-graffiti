@@ -18,14 +18,16 @@ extern crate texture;
 mod laser;
 mod server;
 
+use image::Pixel;
 use opencv::core;
 use opencv::highgui;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
+use image::ImageBuffer;
 use image::ConvertBuffer;
 use server::start_http_server;
 use rscam::Frame;
 
-type Image = image::ImageBuffer<image::Rgb<u8>, Frame>;
+type ImageFrame = image::ImageBuffer<image::Rgb<u8>, Frame>;
 
 const WIDTH: u32 = 1280;
 const HEIGHT: u32 = 720;
@@ -34,6 +36,28 @@ fn main() {
   println!("TODO: Everything.");
   unused_webcam();
   //start_http_server();
+}
+
+fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
+  let (width, height) = frame.dimensions();
+  let mut new_image : ImageBuffer<image::Rgba<u8>, Vec<u8>> = ImageBuffer::new(WIDTH, HEIGHT);
+
+  for i in 0..width {
+    for j in 0..height {
+      let pix = frame.get_pixel(i, j);
+      let rgba = pix.to_rgba();
+      let mut pix2 = rgba.clone();
+      pix2.apply(|pix: u8| {
+
+        pix
+      });
+      //let pix = new_image.get_pixel(0, 0);
+
+      new_image.put_pixel(i, j, pix2);
+    }
+  }
+
+  new_image
 }
 
 fn unused_webcam() {
@@ -54,7 +78,9 @@ fn unused_webcam() {
         .start()
         .unwrap();
     for frame in cam {
-      if let Err(_) = sender.send(frame.convert()) {
+      let grayscale = to_grayscale(frame);
+      let converted = grayscale.convert();
+      if let Err(_) = sender.send(grayscale) {
         break;
       }
     }
