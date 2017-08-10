@@ -48,10 +48,13 @@ fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
       let rgba = pix.to_rgba();
       let mut pix2 = rgba.clone();
       pix2.apply(|pix: u8| {
-
-        pix.saturating_sub(100)
+        //pix.saturating_sub(100)
+        if pix > 100 {
+          pix
+        } else {
+          0
+        }
       });
-      //let pix = new_image.get_pixel(0, 0);
 
       new_image.put_pixel(i, j, pix2);
     }
