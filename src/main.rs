@@ -40,6 +40,9 @@ type ImageFrameRgba = ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 const WIDTH: u32 = 640;
 const HEIGHT: u32 = 480;
 
+/// Number of points to blank from spiral's edge to center.
+static BLANKING_POINTS : i32 = 10;
+
 #[derive(Debug)]
 struct ImagePosition {
   pub x: u32,
@@ -70,6 +73,8 @@ fn main() {
     let mut current_point = 0;
 
     dac.play_function(move |num_points: u16| {
+      //println!(">> LASER WANTS POINTS: {}", num_points);
+
       let num_points = num_points as usize;
       let mut buf = Vec::new();
 
@@ -79,6 +84,7 @@ fn main() {
         Err(_) => println!("Problem reading drawing"),
         Ok(drawing) => {
           let path_size = drawing.path.len();
+          let total_points = path_size + BLANKING_POINTS as usize;
 
           if path_size == 0 {
             for _ in 0..num_points {
@@ -86,11 +92,35 @@ fn main() {
             }
           } else {
             //println!("Draw Time!");
+            //println!("Drawing path length: {}", path_size);
+
             while buf.len() < num_points {
-              let pt = drawing.path.get(current_point).unwrap();
-              current_point = (current_point + 1) % path_size;
-              //println!("Current point: {}", current_point);
-              buf.push(Point::xy_rgb(pt.x, pt.y, ETHERDREAM_COLOR_MAX/4, 0, ETHERDREAM_COLOR_MAX/4))
+              if current_point < path_size {
+                let pt = drawing.path.get(current_point).unwrap();
+
+                //println!("Current point: {}", current_point);
+                buf.push(Point::xy_rgb(pt.x, pt.y, ETHERDREAM_COLOR_MAX/4, 0, ETHERDREAM_COLOR_MAX/4));
+              } else {
+                let first_point = drawing.path.get(0).unwrap();
+                let last_point = drawing.path.get(drawing.path.len() - 1).unwrap();
+
+                let tracking_points = get_tracking_points(
+                  first_point.x, first_point.y, last_point.x, last_point.y, 10);
+
+                let mut index = current_point - path_size;
+
+                /*println!("Path Size: {}, Total Points: {} ||| Current Point: {} ||| Tracking vec size: {}, index: {}",
+                  path_size, total_points,
+                  current_point,
+                  tracking_points.len(), index);*/
+
+                if let Some(pt) = tracking_points.get(index) {
+                  buf.push(Point::xy_rgb(pt.x, pt.y, ETHERDREAM_COLOR_MAX/4, 0, ETHERDREAM_COLOR_MAX/4));
+                }
+              }
+
+              current_point = (current_point + 1) % total_points;
+              //println!("next current point: {}, path_size: {}", current_point, path_size);
             }
           }
         }
@@ -168,7 +198,7 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
       let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>> = grayscale.convert();
 
       let maybe_pos = find_laser_position(converted);
-      println!("Position: {:?}", maybe_pos);
+      //println!("Position: {:?}", maybe_pos);
 
       if let Some(pos) = maybe_pos {
         match drawing.write() {
@@ -228,4 +258,41 @@ fn webcam_y(laser_y: i16, image_height : u32) -> u32 {
   let laser_y = laser_y * -1; // Inverted
   map_point(laser_y, image_height)
 }*/
+
+
+fn get_tracking_points(last_x: i16, last_y: i16, next_x: i16, next_y: i16, num_points: usize) -> Vec<Point> {
+  /* Python tracking code:
+  # Now, track to the next object.
+  lastX = curObj.lastPt[0]
+  lastY = curObj.lastPt[1]
+  xDiff = curObj.lastPt[0] - nextObj.firstPt[0]
+  yDiff = curObj.lastPt[1] - nextObj.firstPt[1]
+
+  mv = TRACKING_SAMPLE_PTS
+  for i in xrange(mv):
+    percent = i/float(mv)
+    xb = int(lastX - xDiff*percent)
+    yb = int(lastY - yDiff*percent)
+    # If we want to 'see' the tracking path (debug)
+    if SHOW_TRACKING_PATH:
+      yield (xb, yb, 0, CMAX, 0)
+    else:
+      yield (xb, yb, 0, 0, 0)*/
+
+  let x_diff = (last_x - next_x) as f64;
+  let y_diff = (last_y - next_y) as f64;
+
+  let mut path = Vec::with_capacity(num_points);
+
+  for i in 0 .. num_points {
+    let percent = i as f64 / num_points as f64;
+    let xb = last_x - (x_diff * percent) as i16;
+    let yb = last_y - (y_diff * percent) as i16;
+
+    path.push(Point::xy_blank(xb, yb));
+  }
+
+  path
+}
+
 
