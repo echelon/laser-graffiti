@@ -74,6 +74,40 @@ impl Canvas {
       let x = map_point(position.x, self.image_width);
       let y = map_point(position.y, self.image_height);
 
+      println!("New point xy: {}, {}", x, y);
+
+      let mut interpolation = Vec::new();
+
+      match laser_points.last() {
+        None => {},
+        Some(last_point) => {
+          println!("Last xy: {}, {}", last_point.x, last_point.y);
+
+          let last_x = last_point.x;
+          let last_y = last_point.y;
+          let x_diff = last_x.saturating_sub(x) as f64;
+          let y_diff = last_y.saturating_sub(y) as f64;
+
+          for i in 0 .. 5 {
+            let percent = i as f64 / 5.0;
+            let xb = last_x.saturating_sub((x_diff * percent) as i16);
+            let yb = last_y.saturating_sub((y_diff * percent) as i16);
+
+            interpolation.push(Point::xy_rgb(
+              xb,
+              yb,
+              ETHERDREAM_COLOR_MAX/4,
+              0,
+              ETHERDREAM_COLOR_MAX/4,
+            ));
+          }
+        },
+      }
+
+      if interpolation.len() > 0 {
+        laser_points.extend(interpolation);
+      }
+
       laser_points.push(Point::xy_rgb(
         x,
         y,
