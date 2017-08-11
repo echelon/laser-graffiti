@@ -11,17 +11,20 @@ use std::sync::RwLock;
 use std::time::Instant;
 
 /// Position of the laser pointer in a webcam frame.
+#[derive(Debug)]
 pub struct ImagePosition {
   pub x: u32,
   pub y: u32,
 }
 
-// Debug data from the camera.
+/// Debug data from the camera.
+#[derive(Debug)]
 pub struct CameraCapture {
   pub position: ImagePosition,
   pub time: Instant,
 }
 
+/// A payload to draw to the laser.
 pub struct DrawPayload {
   pub points: Vec<Point>,
   pub next_cursor: usize,
@@ -71,7 +74,13 @@ impl Canvas {
       let x = map_point(position.x, self.image_width);
       let y = map_point(position.y, self.image_height);
 
-      laser_points.push(Point::xy_binary(x, y, true));
+      laser_points.push(Point::xy_rgb(
+        x,
+        y,
+        ETHERDREAM_COLOR_MAX/4,
+        0, // Cannot have green
+        ETHERDREAM_COLOR_MAX/4,
+      ));
     }
 
     Ok(())
@@ -81,23 +90,29 @@ impl Canvas {
   pub fn get_points(&self, index: usize, num_points: usize)
       -> Result<DrawPayload, PaintError> {
 
-    let mut points = Vec::new();
+    let mut buf = Vec::new();
+    let mut laser_points = self.laser_points.read()?;
 
-    { // Scope for read lock
-      let mut laser_points = self.laser_points.read()?;
+    // No points case
+    if laser_points.len() < 1 {
+      return Ok(DrawPayload {
+        points: Self::blank_points(num_points),
+        next_cursor: 0, // Doesn't matter. Infinite stream of blanks.
+      })
+    }
 
-      if laser_points.len() < 1 {
-        return Ok(DrawPayload {
-          points: Self::blank_points(num_points),
-          next_cursor: 0, // Doesn't matter. Infinite stream of blanks.
-        })
-      }
+    let mut i = index;
 
+    while buf.len() < num_points {
+      let pt = laser_points.get(index).unwrap();
+      buf.push(pt.clone());
+
+      i = (i + 1) % laser_points.len();
     }
 
     Ok(DrawPayload {
-      points: points,
-      next_cursor: 0, // TODO
+      points: buf,
+      next_cursor: i, // TODO
     })
   }
 

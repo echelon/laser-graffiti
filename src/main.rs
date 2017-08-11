@@ -20,6 +20,7 @@ mod error;
 mod laser;
 mod server;
 
+use std::time::Instant;
 use std::sync::Arc;
 use drawing::Canvas;
 use lase::tools::ETHERDREAM_X_MAX;
@@ -31,6 +32,7 @@ use image::Pixel;
 use lase::tools::find_first_etherdream_dac;
 use opencv::core;
 use opencv::highgui;
+use drawing::ImagePosition;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use image::ImageBuffer;
 use image::ConvertBuffer;
@@ -45,12 +47,6 @@ const HEIGHT: u32 = 480;
 
 /// Number of points to blank from spiral's edge to center.
 static BLANKING_POINTS : i32 = 10;
-
-#[derive(Debug)]
-struct ImagePosition {
-  pub x: u32,
-  pub y: u32,
-}
 
 struct Drawing {
   pub path: Vec<Point>,
@@ -69,7 +65,8 @@ fn main() {
   let drawing = Arc::new(RwLock::new(Drawing::new()));
   let drawing2 = drawing.clone();
 
-  let canvas = Canvas::new(WIDTH, HEIGHT, BLANKING_POINTS as usize);
+  let canvas = Arc::new(Canvas::new(WIDTH, HEIGHT, BLANKING_POINTS as usize));
+  let canvas2 = canvas.clone();
 
   let mut dac = find_first_etherdream_dac().expect("Unable to find DAC");
 
@@ -142,7 +139,7 @@ fn main() {
     });
   });
 
-  unused_webcam(drawing2);
+  unused_webcam(drawing2, canvas2);
 }
 
 fn to_grayscale(frame: ImageFrame) -> ImageFrameRgba {
@@ -186,7 +183,7 @@ fn find_laser_position(frame: ImageFrameRgba) -> Option<ImagePosition> {
   None
 }
 
-fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
+fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>) {
   /*let window: PistonWindow =
     WindowSettings::new("piston: image", [WIDTH, HEIGHT])
         .exit_on_esc(true)
@@ -214,18 +211,7 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
       if let Some(pos) = maybe_pos {
         println!("Found Point : {:?}", pos);
 
-        match drawing.write() {
-          Err(_) => println!("Error obtaining write lock"),
-          Ok(mut drawing) => {
-
-            let x = map_point(pos.x, WIDTH) * -1;
-            let y = map_point(pos.y, HEIGHT) * -1;
-
-
-            drawing.path.push(Point::xy_rgb(x, y, 0, 0, ETHERDREAM_COLOR_MAX / 4));
-          }
-        }
-
+        canvas.add_point(pos, Instant::now());
       }
 
       /*if let Err(_) = sender.send(grayscale) {
