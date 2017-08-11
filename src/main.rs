@@ -15,6 +15,8 @@ extern crate texture;
 
 #[macro_use] extern crate serde_derive;
 
+mod drawing;
+mod error;
 mod laser;
 mod server;
 
