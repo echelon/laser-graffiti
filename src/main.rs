@@ -73,7 +73,7 @@ fn unused_webcam() {
   let mut tex: Option<Texture<_>> = None;
   let (sender, receiver) = std::sync::mpsc::channel();
   let imgthread = std::thread::spawn(move || {
-    let cam = camera_capture::create(0).unwrap()
+    let cam = camera_capture::create(1).unwrap()
         .fps(30.0)
         .unwrap()
         .resolution(WIDTH, HEIGHT)
