@@ -29,8 +29,8 @@ use rscam::Frame;
 
 type ImageFrame = image::ImageBuffer<image::Rgb<u8>, Frame>;
 
-const WIDTH: u32 = 1280;
-const HEIGHT: u32 = 720;
+const WIDTH: u32 = 640;
+const HEIGHT: u32 = 480;
 
 fn main() {
   println!("TODO: Everything.");
@@ -49,8 +49,8 @@ fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
       let mut pix2 = rgba.clone();
       pix2.apply(|pix: u8| {
         //pix.saturating_sub(100)
-        if pix > 100 {
-          pix
+        if pix > 200 {
+          255
         } else {
           0
         }
