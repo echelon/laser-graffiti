@@ -16,7 +16,7 @@
   camera_capture = "0.3"
   image = "0.7"
   iron = "0.5"
-  lase = "0.0.*"
+  lase = "0.0.1"
   opencv = "0.2"
   piston-texture = "0.4"
   piston_window = "0.40"

@@ -18,7 +18,14 @@ extern crate texture;
 mod laser;
 mod server;
 
+use std::sync::Arc;
+use lase::tools::ETHERDREAM_X_MAX;
+use lase::tools::ETHERDREAM_X_MIN;
+use lase::tools::ETHERDREAM_COLOR_MAX;
+use std::sync::RwLock;
+use lase::Point;
 use image::Pixel;
+use lase::tools::find_first_etherdream_dac;
 use opencv::core;
 use opencv::highgui;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
@@ -28,19 +35,77 @@ use server::start_http_server;
 use rscam::Frame;
 
 type ImageFrame = image::ImageBuffer<image::Rgb<u8>, Frame>;
+type ImageFrameRgba = ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
 const WIDTH: u32 = 640;
 const HEIGHT: u32 = 480;
 
-fn main() {
-  println!("TODO: Everything.");
-  unused_webcam();
-  //start_http_server();
+#[derive(Debug)]
+struct ImagePosition {
+  pub x: u32,
+  pub y: u32,
 }
 
-fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
+struct Drawing {
+  pub path: Vec<Point>,
+}
+
+impl Drawing {
+  pub fn new() -> Drawing {
+    Drawing { path: Vec::new() }
+  }
+}
+
+fn main() {
+  println!("TODO: Everything.");
+  //start_http_server();
+
+  let drawing = Arc::new(RwLock::new(Drawing::new()));
+  let drawing2 = drawing.clone();
+
+
+  let mut dac = find_first_etherdream_dac().expect("Unable to find DAC");
+
+  std::thread::spawn(move || {
+    let mut current_point = 0;
+
+    dac.play_function(move |num_points: u16| {
+      let num_points = num_points as usize;
+      let mut buf = Vec::new();
+
+      //println!("Wants points: {}", num_points);
+
+      match drawing.read() {
+        Err(_) => println!("Problem reading drawing"),
+        Ok(drawing) => {
+          let path_size = drawing.path.len();
+
+          if path_size == 0 {
+            for _ in 0..num_points {
+              buf.push(Point::xy_binary(0, 0, false))
+            }
+          } else {
+            //println!("Draw Time!");
+            while buf.len() < num_points {
+              let pt = drawing.path.get(current_point).unwrap();
+              current_point = (current_point + 1) % path_size;
+              //println!("Current point: {}", current_point);
+              buf.push(Point::xy_rgb(pt.x, pt.y, ETHERDREAM_COLOR_MAX/4, 0, ETHERDREAM_COLOR_MAX/4))
+            }
+          }
+        }
+      }
+
+      buf
+    });
+  });
+
+  unused_webcam(drawing2);
+}
+
+fn to_grayscale(frame: ImageFrame) -> ImageFrameRgba {
   let (width, height) = frame.dimensions();
-  let mut new_image : ImageBuffer<image::Rgba<u8>, Vec<u8>> = ImageBuffer::new(WIDTH, HEIGHT);
+  let mut new_image : ImageFrameRgba = ImageBuffer::new(WIDTH, HEIGHT);
 
   for i in 0..width {
     for j in 0..height {
@@ -48,8 +113,7 @@ fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
       let rgba = pix.to_rgba();
       let mut pix2 = rgba.clone();
       pix2.apply(|pix: u8| {
-        //pix.saturating_sub(100)
-        if pix > 200 {
+        if pix > 180 {
           255
         } else {
           0
@@ -63,7 +127,24 @@ fn to_grayscale(frame: ImageFrame) -> ImageBuffer<image::Rgba<u8>, Vec<u8>> {
   new_image
 }
 
-fn unused_webcam() {
+fn find_laser_position(frame: ImageFrameRgba) -> Option<ImagePosition> {
+  // FIXME: This crudely finds the first pixel that has a saturated green channel
+  // We need to find the centroid of the largest saturation cluster.
+  let (width, height) = frame.dimensions();
+
+  for i in 0..width {
+    for j in 0..height {
+      let pix = frame.get_pixel(i, j);
+      let g = pix.data[1]; // green channel
+      if g == 255 {
+        return Some(ImagePosition { x: i, y: j } )
+      }
+    }
+  }
+  None
+}
+
+fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
   let window: PistonWindow =
     WindowSettings::new("piston: image", [WIDTH, HEIGHT])
         .exit_on_esc(true)
@@ -82,7 +163,26 @@ fn unused_webcam() {
         .unwrap();
     for frame in cam {
       let grayscale = to_grayscale(frame);
-      let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>>  = grayscale.convert();
+      let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>> = grayscale.convert();
+
+      let maybe_pos = find_laser_position(converted);
+      println!("Position: {:?}", maybe_pos);
+
+      if let Some(pos) = maybe_pos {
+        match drawing.write() {
+          Err(_) => println!("Error obtaining write lock"),
+          Ok(mut drawing) => {
+
+            let x = map_point(pos.x, WIDTH);
+            let y = map_point(pos.y, HEIGHT);
+
+
+            drawing.path.push(Point::xy_binary(x, y, true));
+          }
+        }
+
+      }
+
       if let Err(_) = sender.send(grayscale) {
         break;
       }
@@ -108,4 +208,22 @@ fn unused_webcam() {
   drop(receiver);
   imgthread.join().unwrap();
 }
+
+fn map_point(image_position: u32, image_scale: u32) -> i16 {
+  let num = image_position as f64;
+  let denom = image_scale as f64;
+  let ratio = num / denom;
+  let scale = ETHERDREAM_X_MAX as f64 - ETHERDREAM_X_MIN as f64;
+  let result = ratio * scale;
+  result as i16
+}
+
+/*fn webcam_x(laser_x: i16, image_width: u32) -> u32 {
+  map_point(laser_x, image_width)
+}
+
+fn webcam_y(laser_y: i16, image_height : u32) -> u32 {
+  let laser_y = laser_y * -1; // Inverted
+  map_point(laser_y, image_height)
+}*/
 
