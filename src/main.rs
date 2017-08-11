@@ -99,7 +99,7 @@ fn main() {
                 let pt = drawing.path.get(current_point).unwrap();
 
                 //println!("Current point: {}", current_point);
-                buf.push(Point::xy_rgb(pt.x, pt.y, ETHERDREAM_COLOR_MAX/4, 0, ETHERDREAM_COLOR_MAX/4));
+                buf.push(pt.clone());
               } else {
                 let first_point = drawing.path.get(0).unwrap();
                 let last_point = drawing.path.get(drawing.path.len() - 1).unwrap();
@@ -115,7 +115,7 @@ fn main() {
                   tracking_points.len(), index);*/
 
                 if let Some(pt) = tracking_points.get(index) {
-                  buf.push(Point::xy_rgb(pt.x, pt.y, ETHERDREAM_COLOR_MAX/4, 0, ETHERDREAM_COLOR_MAX/4));
+                  buf.push(pt.clone());
                 }
               }
 
@@ -198,9 +198,10 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
       let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>> = grayscale.convert();
 
       let maybe_pos = find_laser_position(converted);
-      //println!("Position: {:?}", maybe_pos);
 
       if let Some(pos) = maybe_pos {
+        println!("Found Point : {:?}", pos);
+
         match drawing.write() {
           Err(_) => println!("Error obtaining write lock"),
           Ok(mut drawing) => {
@@ -209,7 +210,7 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
             let y = map_point(pos.y, HEIGHT);
 
 
-            drawing.path.push(Point::xy_binary(x, y, true));
+            drawing.path.push(Point::xy_rgb(x, y, 0, 0, ETHERDREAM_COLOR_MAX / 4));
           }
         }
 
@@ -279,8 +280,8 @@ fn get_tracking_points(last_x: i16, last_y: i16, next_x: i16, next_y: i16, num_p
     else:
       yield (xb, yb, 0, 0, 0)*/
 
-  let x_diff = (last_x - next_x) as f64;
-  let y_diff = (last_y - next_y) as f64;
+  let x_diff = last_x.saturating_sub(next_x) as f64;
+  let y_diff = last_y.saturating_sub(next_y) as f64;
 
   let mut path = Vec::with_capacity(num_points);
 
@@ -289,7 +290,7 @@ fn get_tracking_points(last_x: i16, last_y: i16, next_x: i16, next_y: i16, num_p
     let xb = last_x - (x_diff * percent) as i16;
     let yb = last_y - (y_diff * percent) as i16;
 
-    path.push(Point::xy_blank(xb, yb));
+    path.push(Point::xy_rgb(xb, yb, ETHERDREAM_COLOR_MAX / 4, 0, 0));
   }
 
   path
