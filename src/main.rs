@@ -206,8 +206,8 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
           Err(_) => println!("Error obtaining write lock"),
           Ok(mut drawing) => {
 
-            let x = map_point(pos.x, WIDTH);
-            let y = map_point(pos.y, HEIGHT);
+            let x = map_point(pos.x, WIDTH) * -1;
+            let y = map_point(pos.y, HEIGHT) * -1;
 
 
             drawing.path.push(Point::xy_rgb(x, y, 0, 0, ETHERDREAM_COLOR_MAX / 4));
