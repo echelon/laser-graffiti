@@ -5,6 +5,7 @@ use error::PaintError;
 use lase::Point;
 use lase::tools::ETHERDREAM_X_MAX;
 use lase::tools::ETHERDREAM_X_MIN;
+use lase::tools::ETHERDREAM_COLOR_MAX;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Instant;
@@ -21,6 +22,11 @@ pub struct CameraCapture {
   pub time: Instant,
 }
 
+pub struct DrawPayload {
+  pub points: Vec<Point>,
+  pub next_cursor: usize,
+}
+
 /// Canvas for drawing.
 pub struct Canvas {
   /// Debug data
@@ -31,16 +37,21 @@ pub struct Canvas {
   /// Camera dimensions.
   image_width: u32,
   image_height: u32,
+
+  // Points to track back to source.
+  tracking_points: usize,
 }
 
 impl Canvas {
   /// CTOR.
-  pub fn new(image_width: u32, image_height: u32) -> Canvas {
+  pub fn new(image_width: u32, image_height: u32, tracking_points: usize)
+      -> Canvas {
     Canvas {
       camera_data: RwLock::new(Vec::new()),
       laser_points: RwLock::new(Vec::new()),
       image_width: image_width,
       image_height: image_height,
+      tracking_points: tracking_points,
     }
   }
 
@@ -54,14 +65,54 @@ impl Canvas {
   /// Add a point to the canvas.
   pub fn add_point(&self, position: ImagePosition, time: Instant)
       -> Result<(), PaintError> {
-    let mut laser_points = self.laser_points.write()?;
+    { // Scope for write lock
+      let mut laser_points = self.laser_points.write()?;
 
-    let x = map_point(position.x, self.image_width);
-    let y = map_point(position.y, self.image_height);
+      let x = map_point(position.x, self.image_width);
+      let y = map_point(position.y, self.image_height);
 
-    laser_points.push(Point::xy_binary(x, y, true));
+      laser_points.push(Point::xy_binary(x, y, true));
+    }
 
     Ok(())
+  }
+
+  /// Get a point at the given offset.
+  pub fn get_points(&self, index: usize, num_points: usize)
+      -> Result<DrawPayload, PaintError> {
+
+    let mut points = Vec::new();
+
+    { // Scope for read lock
+      let mut laser_points = self.laser_points.read()?;
+
+      if laser_points.len() < 1 {
+        return Ok(DrawPayload {
+          points: Self::blank_points(num_points),
+          next_cursor: 0, // Doesn't matter. Infinite stream of blanks.
+        })
+      }
+
+    }
+
+    Ok(DrawPayload {
+      points: points,
+      next_cursor: 0, // TODO
+    })
+  }
+
+  fn blank_points(num_points: usize) -> Vec<Point> {
+    let mut points = Vec::with_capacity(num_points);
+    for _i in 0 .. num_points {
+      points.push(Point::xy_rgb(
+        0,
+        0,
+        ETHERDREAM_COLOR_MAX / 20,
+        0,
+        ETHERDREAM_COLOR_MAX / 20
+      ))
+    }
+    points
   }
 }
 

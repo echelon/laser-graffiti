@@ -21,6 +21,7 @@ mod laser;
 mod server;
 
 use std::sync::Arc;
+use drawing::Canvas;
 use lase::tools::ETHERDREAM_X_MAX;
 use lase::tools::ETHERDREAM_X_MIN;
 use lase::tools::ETHERDREAM_COLOR_MAX;
@@ -68,6 +69,7 @@ fn main() {
   let drawing = Arc::new(RwLock::new(Drawing::new()));
   let drawing2 = drawing.clone();
 
+  let canvas = Canvas::new(WIDTH, HEIGHT, BLANKING_POINTS as usize);
 
   let mut dac = find_first_etherdream_dac().expect("Unable to find DAC");
 
@@ -78,7 +80,7 @@ fn main() {
       //println!(">> LASER WANTS POINTS: {}", num_points);
 
       let num_points = num_points as usize;
-      let mut buf = Vec::new();
+      /*let mut buf = Vec::new();
 
       //println!("Wants points: {}", num_points);
 
@@ -111,10 +113,10 @@ fn main() {
 
                 let mut index = current_point - path_size;
 
-                /*println!("Path Size: {}, Total Points: {} ||| Current Point: {} ||| Tracking vec size: {}, index: {}",
-                  path_size, total_points,
-                  current_point,
-                  tracking_points.len(), index);*/
+                //println!("Path Size: {}, Total Points: {} ||| Current Point: {} ||| Tracking vec size: {}, index: {}",
+                //  path_size, total_points,
+                //  current_point,
+                // tracking_points.len(), index);
 
                 if let Some(pt) = tracking_points.get(index) {
                   buf.push(pt.clone());
@@ -128,7 +130,15 @@ fn main() {
         }
       }
 
-      buf
+      buf*/
+
+
+      let payload = canvas.get_points(current_point, num_points)
+          .expect("Failure to get points!");
+
+      current_point = payload.next_cursor;
+
+      payload.points
     });
   });
 
