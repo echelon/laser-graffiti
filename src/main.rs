@@ -145,14 +145,15 @@ fn find_laser_position(frame: ImageFrameRgba) -> Option<ImagePosition> {
 }
 
 fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
-  let window: PistonWindow =
+  /*let window: PistonWindow =
     WindowSettings::new("piston: image", [WIDTH, HEIGHT])
         .exit_on_esc(true)
         .build()
         .unwrap();
 
-  let mut tex: Option<Texture<_>> = None;
   let (sender, receiver) = std::sync::mpsc::channel();
+  let mut tex: Option<Texture<_>> = None;*/
+
   let imgthread = std::thread::spawn(move || {
     let cam = camera_capture::create(1).unwrap()
         .fps(30.0)
@@ -161,6 +162,7 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
         .unwrap()
         .start()
         .unwrap();
+
     for frame in cam {
       let grayscale = to_grayscale(frame);
       let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>> = grayscale.convert();
@@ -183,13 +185,13 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
 
       }
 
-      if let Err(_) = sender.send(grayscale) {
+      /*if let Err(_) = sender.send(grayscale) {
         break;
-      }
+      }*/
     }
   });
 
-  for e in window {
+  /*for e in window {
     if let Ok(frame) = receiver.try_recv() {
       if let Some(mut t) = tex {
         t.update(&mut *e.encoder.borrow_mut(), &frame).unwrap();
@@ -205,7 +207,7 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>) {
       }
     });
   }
-  drop(receiver);
+  drop(receiver);*/
   imgthread.join().unwrap();
 }
 
