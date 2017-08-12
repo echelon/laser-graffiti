@@ -88,8 +88,9 @@ impl Canvas {
           let x_diff = last_x.saturating_sub(x) as f64;
           let y_diff = last_y.saturating_sub(y) as f64;
 
-          for i in 0 .. 5 {
-            let percent = i as f64 / 5.0;
+          const interpolate_pts : usize = 20;
+          for i in 0 .. interpolate_pts {
+            let percent = i as f64 / interpolate_pts as f64;
             let xb = last_x.saturating_sub((x_diff * percent) as i16);
             let yb = last_y.saturating_sub((y_diff * percent) as i16);
 
@@ -98,7 +99,7 @@ impl Canvas {
               yb,
               ETHERDREAM_COLOR_MAX/4,
               0,
-              ETHERDREAM_COLOR_MAX/4,
+              0,
             ));
           }
         },
@@ -113,7 +114,7 @@ impl Canvas {
         y,
         ETHERDREAM_COLOR_MAX/4,
         0, // Cannot have green
-        ETHERDREAM_COLOR_MAX/4,
+        0,
       ));
     }
 
@@ -135,11 +136,26 @@ impl Canvas {
       })
     }
 
+    let total_len = laser_points.len() + self.tracking_points;
+
     let mut i = index;
 
     while buf.len() < num_points {
-      let pt = laser_points.get(index).unwrap();
-      buf.push(pt.clone());
+      if i < laser_points.len() {
+        let pt = laser_points.get(index).unwrap();
+        buf.push(pt.clone());
+      } else {
+        let first_pt = laser_points.get(0).unwrap();
+        let last_pt = laser_points.last().unwrap();
+
+        let interpolation_pts = Self::interpolate_points(
+          last_pt, first_pt, self.tracking_points);
+
+        let j = (i - laser_points.len()) % total_len;
+
+        let pt = interpolation_pts.get(i).unwrap();
+        buf.push(pt.clone());
+      }
 
       i = (i + 1) % laser_points.len();
     }
@@ -153,15 +169,35 @@ impl Canvas {
   fn blank_points(num_points: usize) -> Vec<Point> {
     let mut points = Vec::with_capacity(num_points);
     for _i in 0 .. num_points {
-      points.push(Point::xy_rgb(
-        0,
-        0,
-        ETHERDREAM_COLOR_MAX / 20,
-        0,
-        ETHERDREAM_COLOR_MAX / 20
-      ))
+      points.push(Point::xy_blank(0, 0));
     }
     points
+  }
+
+  fn interpolate_points(last_point: &Point, next_point: &Point,
+                        num_interpolation_points: usize) -> Vec<Point> {
+    let mut buf = Vec::with_capacity(num_interpolation_points);
+
+    let last_x = last_point.x;
+    let last_y = last_point.y;
+    let x_diff = last_x.saturating_sub(next_point.x) as f64;
+    let y_diff = last_y.saturating_sub(next_point.y) as f64;
+
+    for i in 0 .. num_interpolation_points {
+      let percent = i as f64 / num_interpolation_points as f64;
+      let xb = last_x.saturating_sub((x_diff * percent) as i16);
+      let yb = last_y.saturating_sub((y_diff * percent) as i16);
+
+      buf.push(Point::xy_rgb(
+        xb,
+        yb,
+        ETHERDREAM_COLOR_MAX/4,
+        0,
+        0,
+      ));
+    }
+
+    buf
   }
 }
 
