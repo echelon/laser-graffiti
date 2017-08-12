@@ -71,8 +71,8 @@ impl Canvas {
     { // Scope for write lock
       let mut laser_points = self.laser_points.write()?;
 
-      let x = map_point(position.x, self.image_width);
-      let y = map_point(position.y, self.image_height);
+      let mut x = map_point(position.x, self.image_width);
+      let mut y = map_point(position.y, self.image_height);
 
       println!("New point xy: {}, {}", x, y);
 
@@ -83,12 +83,16 @@ impl Canvas {
         Some(last_point) => {
           println!("Last xy: {}, {}", last_point.x, last_point.y);
 
+          // TODO DEBUG ONLY
+          //x = last_point.x.saturating_add(1000);
+          //y = last_point.y.saturating_add(1000);
+
           let last_x = last_point.x;
           let last_y = last_point.y;
           let x_diff = last_x.saturating_sub(x) as f64;
           let y_diff = last_y.saturating_sub(y) as f64;
 
-          const interpolate_pts : usize = 20;
+          const interpolate_pts : usize = 200;
           for i in 0 .. interpolate_pts {
             let percent = i as f64 / interpolate_pts as f64;
             let xb = last_x.saturating_sub((x_diff * percent) as i16);
