@@ -1,43 +1,38 @@
 // Copyright (c) 2017 Brandon Thomas <bt@brand.io>
 // Painting with Lasers
 
+extern crate argparse;
 extern crate camera_capture;
 extern crate image;
-extern crate iron;
 extern crate lase;
-extern crate opencv;
 extern crate piston_window;
 extern crate router;
 extern crate rscam;
-extern crate serde;
-extern crate serde_json;
 extern crate texture;
 
-#[macro_use] extern crate serde_derive;
-
+mod arguments;
 mod drawing;
 mod error;
 mod laser;
-mod server;
 
-use std::time::Instant;
-use std::sync::Arc;
+use arguments::Arguments;
+use argparse::ArgumentParser;
+use argparse::{Store, StoreTrue};
 use drawing::Canvas;
+use drawing::ImagePosition;
+use image::ConvertBuffer;
+use image::ImageBuffer;
+use image::Pixel;
+use lase::Point;
+use lase::tools::ETHERDREAM_COLOR_MAX;
 use lase::tools::ETHERDREAM_X_MAX;
 use lase::tools::ETHERDREAM_X_MIN;
-use lase::tools::ETHERDREAM_COLOR_MAX;
-use std::sync::RwLock;
-use lase::Point;
-use image::Pixel;
 use lase::tools::find_first_etherdream_dac;
-use opencv::core;
-use opencv::highgui;
-use drawing::ImagePosition;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
-use image::ImageBuffer;
-use image::ConvertBuffer;
-use server::start_http_server;
 use rscam::Frame;
+use std::sync::Arc;
+use std::sync::RwLock;
+use std::time::Instant;
 
 type ImageFrame = image::ImageBuffer<image::Rgb<u8>, Frame>;
 type ImageFrameRgba = ImageBuffer<image::Rgba<u8>, Vec<u8>>;
@@ -59,7 +54,7 @@ impl Drawing {
 }
 
 fn main() {
-  println!("TODO: Everything.");
+  let args = Arguments::parse_args();
 
   let drawing = Arc::new(RwLock::new(Drawing::new()));
   let drawing2 = drawing.clone();
@@ -86,7 +81,7 @@ fn main() {
     });
   });
 
-  unused_webcam(drawing2, canvas2);
+  unused_webcam(drawing2, canvas2, &args);
 }
 
 fn to_grayscale(frame: ImageFrame) -> ImageFrameRgba {
@@ -130,15 +125,19 @@ fn find_laser_position(frame: ImageFrameRgba) -> Option<ImagePosition> {
   None
 }
 
-fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>) {
-  let window: PistonWindow =
-    WindowSettings::new("piston: image", [WIDTH, HEIGHT])
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
+fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
+                 args: &Arguments) {
 
   let (sender, receiver) = std::sync::mpsc::channel();
   let mut tex: Option<Texture<_>> = None;
+  let mut window: Option<PistonWindow> = None;
+
+  if args.show_gui {
+    window = Some(WindowSettings::new("piston: image", [WIDTH, HEIGHT])
+        .exit_on_esc(true)
+        .build()
+        .unwrap());
+  }
 
   let imgthread = std::thread::spawn(move || {
     let cam = camera_capture::create(0).unwrap()
@@ -167,23 +166,26 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>) {
     }
   });
 
-  for e in window {
-    if let Ok(frame) = receiver.try_recv() {
-      if let Some(mut t) = tex {
-        t.update(&mut *e.encoder.borrow_mut(), &frame).unwrap();
-        tex = Some(t);
-      } else {
-        tex = Texture::from_image(&mut *e.factory.borrow_mut(), &frame, &TextureSettings::new()).ok();
+  if args.show_gui {
+    for e in window.unwrap() {
+      if let Ok(frame) = receiver.try_recv() {
+        if let Some(mut t) = tex {
+          t.update(&mut *e.encoder.borrow_mut(), &frame).unwrap();
+          tex = Some(t);
+        } else {
+          tex = Texture::from_image(&mut *e.factory.borrow_mut(), &frame, &TextureSettings::new()).ok();
+        }
       }
+      e.draw_2d(|c, g| {
+        clear([1.0; 4], g);
+        if let Some(ref t) = tex {
+          piston_window::image(t, c.transform, g);
+        }
+      });
     }
-    e.draw_2d(|c, g| {
-      clear([1.0; 4], g);
-      if let Some(ref t) = tex {
-        piston_window::image(t, c.transform, g);
-      }
-    });
   }
-  drop(receiver);
+  //drop(receiver);
+
   imgthread.join().unwrap();
 }
 
