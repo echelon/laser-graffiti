@@ -139,8 +139,10 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
         .unwrap());
   }
 
+  let args2 = (*args).clone();
+
   let imgthread = std::thread::spawn(move || {
-    let cam = camera_capture::create(0).unwrap()
+    let cam = camera_capture::create(args2.webcam_index).unwrap()
         .fps(30.0)
         .unwrap()
         .resolution(WIDTH, HEIGHT)
@@ -150,13 +152,11 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
 
     for frame in cam {
       let grayscale = to_grayscale(frame);
-      let converted : ImageBuffer<image::Rgba<u8>, Vec<u8>> = grayscale.convert();
+      let converted: ImageFrameRgba = grayscale.convert();
 
       let maybe_pos = find_laser_position(converted);
-
       if let Some(pos) = maybe_pos {
         println!("Found Point : {:?}", pos);
-
         canvas.add_point(pos, Instant::now());
       }
 
@@ -184,63 +184,6 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
       });
     }
   }
-  //drop(receiver);
 
   imgthread.join().unwrap();
 }
-
-fn map_point(image_position: u32, image_scale: u32) -> i16 {
-  let num = image_position as f64;
-  let denom = image_scale as f64;
-  let ratio = num / denom;
-  let scale = ETHERDREAM_X_MAX as f64 - ETHERDREAM_X_MIN as f64;
-  let result = ratio * scale;
-  result as i16
-}
-
-/*fn webcam_x(laser_x: i16, image_width: u32) -> u32 {
-  map_point(laser_x, image_width)
-}
-
-fn webcam_y(laser_y: i16, image_height : u32) -> u32 {
-  let laser_y = laser_y * -1; // Inverted
-  map_point(laser_y, image_height)
-}*/
-
-
-fn get_tracking_points(last_x: i16, last_y: i16, next_x: i16, next_y: i16, num_points: usize) -> Vec<Point> {
-  /* Python tracking code:
-  # Now, track to the next object.
-  lastX = curObj.lastPt[0]
-  lastY = curObj.lastPt[1]
-  xDiff = curObj.lastPt[0] - nextObj.firstPt[0]
-  yDiff = curObj.lastPt[1] - nextObj.firstPt[1]
-
-  mv = TRACKING_SAMPLE_PTS
-  for i in xrange(mv):
-    percent = i/float(mv)
-    xb = int(lastX - xDiff*percent)
-    yb = int(lastY - yDiff*percent)
-    # If we want to 'see' the tracking path (debug)
-    if SHOW_TRACKING_PATH:
-      yield (xb, yb, 0, CMAX, 0)
-    else:
-      yield (xb, yb, 0, 0, 0)*/
-
-  let x_diff = last_x.saturating_sub(next_x) as f64;
-  let y_diff = last_y.saturating_sub(next_y) as f64;
-
-  let mut path = Vec::with_capacity(num_points);
-
-  for i in 0 .. num_points {
-    let percent = i as f64 / num_points as f64;
-    let xb = last_x - (x_diff * percent) as i16;
-    let yb = last_y - (y_diff * percent) as i16;
-
-    path.push(Point::xy_rgb(xb, yb, ETHERDREAM_COLOR_MAX / 4, 0, 0));
-  }
-
-  path
-}
-
-

@@ -1,8 +1,12 @@
 use argparse::ArgumentParser;
 use argparse::{Store, StoreTrue};
 
+#[derive(Clone)]
 pub struct Arguments {
+  /// Whether or not to show the GUI.
   pub show_gui: bool,
+  /// Which hardware webcam to use.
+  pub webcam_index: u32,
 }
 
 impl Arguments {
@@ -10,6 +14,7 @@ impl Arguments {
 
     let mut args = Arguments {
       show_gui: false,
+      webcam_index: 0,
     };
 
     {
@@ -22,9 +27,9 @@ impl Arguments {
           .add_option(&["-g", "--show-gui"], StoreTrue,
             "Show the GUI.");
 
-      /*parser.refer(&mut frame_repeat_number)
-          .add_option(&["-r", "--repeat-frames"], Store,
-            "Number of times to repeat frames");*/
+      parser.refer(&mut args.webcam_index)
+          .add_option(&["-w", "--webcam"], Store,
+            "Numeric hardware index of webcam to use: /dev/video{N}");
 
       parser.parse_args_or_exit();
     }
