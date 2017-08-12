@@ -5,6 +5,8 @@ use error::PaintError;
 use lase::Point;
 use lase::tools::ETHERDREAM_X_MAX;
 use lase::tools::ETHERDREAM_X_MIN;
+use lase::tools::ETHERDREAM_Y_MAX;
+use lase::tools::ETHERDREAM_Y_MIN;
 use lase::tools::ETHERDREAM_COLOR_MAX;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -41,8 +43,14 @@ pub struct Canvas {
   image_width: u32,
   image_height: u32,
 
-  // Points to track back to source.
+  /// Points to track back to source.
   tracking_points: usize,
+
+  /// Dimension maxima/minima
+  x_max: i16,
+  x_min: i16,
+  y_max: i16,
+  y_min: i16,
 }
 
 impl Canvas {
@@ -55,6 +63,10 @@ impl Canvas {
       image_width: image_width,
       image_height: image_height,
       tracking_points: tracking_points,
+      x_max: ETHERDREAM_X_MAX/4,
+      x_min: ETHERDREAM_X_MIN/4,
+      y_max: ETHERDREAM_Y_MAX/4,
+      y_min: ETHERDREAM_Y_MIN/4,
     }
   }
 
@@ -71,8 +83,8 @@ impl Canvas {
     { // Scope for write lock
       let mut laser_points = self.laser_points.write()?;
 
-      let mut x = map_point(position.x, self.image_width);
-      let mut y = map_point(position.y, self.image_height);
+      let mut x = self.map_x_point(position.x, self.image_width);
+      let mut y = self.map_y_point(position.y, self.image_height);
 
       println!("New point xy: {}, {}", x, y);
 
@@ -170,6 +182,24 @@ impl Canvas {
     })
   }
 
+  fn map_x_point(&self, image_position: u32, image_scale: u32) -> i16 {
+    let num = image_position as f64;
+    let denom = image_scale as f64;
+    let ratio = num / denom;
+    let scale = self.x_max as f64 - self.x_min as f64;
+    let result = ratio * scale * -1.0;
+    result as i16
+  }
+
+  fn map_y_point(&self, image_position: u32, image_scale: u32) -> i16 {
+    let num = image_position as f64;
+    let denom = image_scale as f64;
+    let ratio = num / denom;
+    let scale = self.y_max as f64 - self.y_min as f64;
+    let result = ratio * scale * -1.0;
+    result as i16
+  }
+
   fn blank_points(num_points: usize) -> Vec<Point> {
     let mut points = Vec::with_capacity(num_points);
     for _i in 0 .. num_points {
@@ -203,14 +233,5 @@ impl Canvas {
 
     buf
   }
-}
-
-fn map_point(image_position: u32, image_scale: u32) -> i16 {
-  let num = image_position as f64;
-  let denom = image_scale as f64;
-  let ratio = num / denom;
-  let scale = ETHERDREAM_X_MAX as f64 - ETHERDREAM_X_MIN as f64;
-  let result = ratio * scale;
-  result as i16
 }
 

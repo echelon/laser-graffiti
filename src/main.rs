@@ -44,9 +44,9 @@ type ImageFrameRgba = ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
 const WIDTH: u32 = 640;
 const HEIGHT: u32 = 480;
-
-/// Number of points to blank from spiral's edge to center.
-static BLANKING_POINTS : i32 = 10;
+const THRESHOLD: u8 = 180;
+const TRACKING_POINTS : i32 = 5; // Num of points to blank.
+const SHOW_GUI: bool = true;
 
 struct Drawing {
   pub path: Vec<Point>,
@@ -60,12 +60,11 @@ impl Drawing {
 
 fn main() {
   println!("TODO: Everything.");
-  //start_http_server();
 
   let drawing = Arc::new(RwLock::new(Drawing::new()));
   let drawing2 = drawing.clone();
 
-  let canvas = Arc::new(Canvas::new(WIDTH, HEIGHT, BLANKING_POINTS as usize));
+  let canvas = Arc::new(Canvas::new(WIDTH, HEIGHT, TRACKING_POINTS as usize));
   let canvas2 = canvas.clone();
 
   let mut dac = find_first_etherdream_dac().expect("Unable to find DAC");
@@ -77,58 +76,6 @@ fn main() {
       //println!(">> LASER WANTS POINTS: {}", num_points);
 
       let num_points = num_points as usize;
-      /*let mut buf = Vec::new();
-
-      //println!("Wants points: {}", num_points);
-
-      match drawing.read() {
-        Err(_) => println!("Problem reading drawing"),
-        Ok(drawing) => {
-          let path_size = drawing.path.len();
-          let total_points = path_size + BLANKING_POINTS as usize;
-
-          if path_size == 0 {
-            for _ in 0..num_points {
-              buf.push(Point::xy_binary(0, 0, false))
-            }
-          } else {
-            //println!("Draw Time!");
-            //println!("Drawing path length: {}", path_size);
-
-            while buf.len() < num_points {
-              if current_point < path_size {
-                let pt = drawing.path.get(current_point).unwrap();
-
-                //println!("Current point: {}", current_point);
-                buf.push(pt.clone());
-              } else {
-                let first_point = drawing.path.get(0).unwrap();
-                let last_point = drawing.path.get(drawing.path.len() - 1).unwrap();
-
-                let tracking_points = get_tracking_points(
-                  first_point.x, first_point.y, last_point.x, last_point.y, 10);
-
-                let mut index = current_point - path_size;
-
-                //println!("Path Size: {}, Total Points: {} ||| Current Point: {} ||| Tracking vec size: {}, index: {}",
-                //  path_size, total_points,
-                //  current_point,
-                // tracking_points.len(), index);
-
-                if let Some(pt) = tracking_points.get(index) {
-                  buf.push(pt.clone());
-                }
-              }
-
-              current_point = (current_point + 1) % total_points;
-              //println!("next current point: {}, path_size: {}", current_point, path_size);
-            }
-          }
-        }
-      }
-
-      buf*/
-
 
       let payload = canvas.get_points(current_point, num_points)
           .expect("Failure to get points!");
@@ -152,7 +99,7 @@ fn to_grayscale(frame: ImageFrame) -> ImageFrameRgba {
       let rgba = pix.to_rgba();
       let mut pix2 = rgba.clone();
       pix2.apply(|pix: u8| {
-        if pix > 180 {
+        if pix > THRESHOLD {
           255
         } else {
           0
@@ -184,17 +131,17 @@ fn find_laser_position(frame: ImageFrameRgba) -> Option<ImagePosition> {
 }
 
 fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>) {
-  /*let window: PistonWindow =
+  let window: PistonWindow =
     WindowSettings::new("piston: image", [WIDTH, HEIGHT])
         .exit_on_esc(true)
         .build()
         .unwrap();
 
   let (sender, receiver) = std::sync::mpsc::channel();
-  let mut tex: Option<Texture<_>> = None;*/
+  let mut tex: Option<Texture<_>> = None;
 
   let imgthread = std::thread::spawn(move || {
-    let cam = camera_capture::create(1).unwrap()
+    let cam = camera_capture::create(0).unwrap()
         .fps(30.0)
         .unwrap()
         .resolution(WIDTH, HEIGHT)
@@ -214,13 +161,13 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>) {
         canvas.add_point(pos, Instant::now());
       }
 
-      /*if let Err(_) = sender.send(grayscale) {
+      if let Err(_) = sender.send(grayscale) {
         break;
-      }*/
+      }
     }
   });
 
-  /*for e in window {
+  for e in window {
     if let Ok(frame) = receiver.try_recv() {
       if let Some(mut t) = tex {
         t.update(&mut *e.encoder.borrow_mut(), &frame).unwrap();
@@ -236,7 +183,7 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>) {
       }
     });
   }
-  drop(receiver);*/
+  drop(receiver);
   imgthread.join().unwrap();
 }
 
