@@ -1,13 +1,14 @@
 // Copyright (c) 2017 Brandon Thomas <bt@brand.io>
 // Painting with Lasers
 
+use arguments::Arguments;
 use error::PaintError;
 use lase::Point;
+use lase::tools::ETHERDREAM_COLOR_MAX;
 use lase::tools::ETHERDREAM_X_MAX;
 use lase::tools::ETHERDREAM_X_MIN;
 use lase::tools::ETHERDREAM_Y_MAX;
 use lase::tools::ETHERDREAM_Y_MIN;
-use lase::tools::ETHERDREAM_COLOR_MAX;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Instant;
@@ -55,18 +56,18 @@ pub struct Canvas {
 
 impl Canvas {
   /// CTOR.
-  pub fn new(image_width: u32, image_height: u32, tracking_points: usize)
-      -> Canvas {
+  pub fn new(image_width: u32, image_height: u32, tracking_points: usize,
+             args: &Arguments) -> Canvas {
     Canvas {
       camera_data: RwLock::new(Vec::new()),
       laser_points: RwLock::new(Vec::new()),
       image_width: image_width,
       image_height: image_height,
       tracking_points: tracking_points,
-      x_max: ETHERDREAM_X_MAX/4,
-      x_min: ETHERDREAM_X_MIN/4,
-      y_max: ETHERDREAM_Y_MAX/4,
-      y_min: ETHERDREAM_Y_MIN/4,
+      x_max: args.x_max,
+      x_min: args.x_min,
+      y_max: args.y_max,
+      y_min: args.y_min,
     }
   }
 

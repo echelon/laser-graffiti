@@ -16,17 +16,12 @@ mod error;
 mod laser;
 
 use arguments::Arguments;
-use argparse::ArgumentParser;
-use argparse::{Store, StoreTrue};
 use drawing::Canvas;
 use drawing::ImagePosition;
 use image::ConvertBuffer;
 use image::ImageBuffer;
 use image::Pixel;
 use lase::Point;
-use lase::tools::ETHERDREAM_COLOR_MAX;
-use lase::tools::ETHERDREAM_X_MAX;
-use lase::tools::ETHERDREAM_X_MIN;
 use lase::tools::find_first_etherdream_dac;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use rscam::Frame;
@@ -41,7 +36,6 @@ const WIDTH: u32 = 640;
 const HEIGHT: u32 = 480;
 const THRESHOLD: u8 = 180;
 const TRACKING_POINTS : i32 = 5; // Num of points to blank.
-const SHOW_GUI: bool = true;
 
 struct Drawing {
   pub path: Vec<Point>,
@@ -59,7 +53,7 @@ fn main() {
   let drawing = Arc::new(RwLock::new(Drawing::new()));
   let drawing2 = drawing.clone();
 
-  let canvas = Arc::new(Canvas::new(WIDTH, HEIGHT, TRACKING_POINTS as usize));
+  let canvas = Arc::new(Canvas::new(WIDTH, HEIGHT, TRACKING_POINTS as usize, &args));
   let canvas2 = canvas.clone();
 
   let mut dac = find_first_etherdream_dac().expect("Unable to find DAC");
@@ -78,7 +72,7 @@ fn main() {
       current_point = payload.next_cursor;
 
       payload.points
-    });
+    }).expect("Projection failed.");
   });
 
   unused_webcam(drawing2, canvas2, &args);
@@ -173,7 +167,11 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
           t.update(&mut *e.encoder.borrow_mut(), &frame).unwrap();
           tex = Some(t);
         } else {
-          tex = Texture::from_image(&mut *e.factory.borrow_mut(), &frame, &TextureSettings::new()).ok();
+          tex = Texture::from_image(
+            &mut *e.factory.borrow_mut(),
+            &frame,
+            &TextureSettings::new()
+          ).ok();
         }
       }
       e.draw_2d(|c, g| {
