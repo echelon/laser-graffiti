@@ -5,12 +5,8 @@ use arguments::Arguments;
 use error::PaintError;
 use lase::Point;
 use lase::tools::ETHERDREAM_COLOR_MAX;
-use lase::tools::ETHERDREAM_X_MAX;
-use lase::tools::ETHERDREAM_X_MIN;
-use lase::tools::ETHERDREAM_Y_MAX;
-use lase::tools::ETHERDREAM_Y_MIN;
-use std::sync::Arc;
 use std::sync::RwLock;
+use std::sync::Mutex;
 use std::time::Instant;
 
 /// Position of the laser pointer in a webcam frame.
@@ -18,13 +14,6 @@ use std::time::Instant;
 pub struct ImagePosition {
   pub x: u32,
   pub y: u32,
-}
-
-/// Debug data from the camera.
-#[derive(Debug)]
-pub struct CameraCapture {
-  pub position: ImagePosition,
-  pub time: Instant,
 }
 
 /// A payload to draw to the laser.
@@ -35,10 +24,13 @@ pub struct DrawPayload {
 
 /// Canvas for drawing.
 pub struct Canvas {
-  /// Debug data
-  camera_data: RwLock<Vec<CameraCapture>>,
   /// Points to draw
   laser_points: RwLock<Vec<Point>>,
+
+  /// Time the last point was added
+  // NB: Technically doesn't need to be behind a lock, but is for exterior
+  // immutability ergonomics.
+  last_added_time: Mutex<Option<Instant>>,
 
   /// Camera dimensions.
   image_width: u32,
@@ -56,13 +48,12 @@ pub struct Canvas {
 
 impl Canvas {
   /// CTOR.
-  pub fn new(image_width: u32, image_height: u32, tracking_points: usize,
-             args: &Arguments) -> Canvas {
+  pub fn new(tracking_points: usize, args: &Arguments) -> Canvas {
     Canvas {
-      camera_data: RwLock::new(Vec::new()),
       laser_points: RwLock::new(Vec::new()),
-      image_width: image_width,
-      image_height: image_height,
+      last_added_time: Mutex::new(None),
+      image_width: args.webcam_width,
+      image_height: args.webcam_height,
       tracking_points: tracking_points,
       x_max: args.x_max,
       x_min: args.x_min,
@@ -71,12 +62,11 @@ impl Canvas {
     }
   }
 
-  /// Clear the canvas.
+  /*/// Clear the canvas.
   pub fn reset(&self) -> Result<(), PaintError> {
-    //self.camera_data.clear();
-
+    self.camera_data.clear();
     Ok(())
-  }
+  }*/
 
   /// Add a point to the canvas.
   pub fn add_point(&self, position: ImagePosition, time: Instant)
@@ -84,8 +74,8 @@ impl Canvas {
     { // Scope for write lock
       let mut laser_points = self.laser_points.write()?;
 
-      let mut x = self.map_x_point(position.x, self.image_width);
-      let mut y = self.map_y_point(position.y, self.image_height);
+      let x = self.map_x_point(position.x, self.image_width);
+      let y = self.map_y_point(position.y, self.image_height);
 
       println!("New point xy: {}, {}", x, y);
 
@@ -95,10 +85,6 @@ impl Canvas {
         None => {},
         Some(last_point) => {
           println!("Last xy: {}, {}", last_point.x, last_point.y);
-
-          // TODO DEBUG ONLY
-          //x = last_point.x.saturating_add(1000);
-          //y = last_point.y.saturating_add(1000);
 
           let last_x = last_point.x;
           let last_y = last_point.y;
@@ -135,6 +121,9 @@ impl Canvas {
       ));
     }
 
+    let mut g = self.last_added_time.lock()?;
+    *g = Some(time);
+
     Ok(())
   }
 
@@ -143,7 +132,7 @@ impl Canvas {
       -> Result<DrawPayload, PaintError> {
 
     let mut buf = Vec::new();
-    let mut laser_points = self.laser_points.read()?;
+    let laser_points = self.laser_points.read()?;
 
     // No points case
     if laser_points.len() < 1 {
@@ -170,7 +159,7 @@ impl Canvas {
 
         let j = (i - laser_points.len()) % total_len;
 
-        let pt = interpolation_pts.get(i).unwrap();
+        let pt = interpolation_pts.get(i).unwrap(); // TODO: shouldn't this be 'j'?
         buf.push(pt.clone());
       }
 
@@ -179,7 +168,7 @@ impl Canvas {
 
     Ok(DrawPayload {
       points: buf,
-      next_cursor: i, // TODO
+      next_cursor: i,
     })
   }
 
@@ -187,7 +176,7 @@ impl Canvas {
     let num = image_position as f64;
     let denom = image_scale as f64;
     let ratio = num / denom;
-    let scale = self.x_max as f64 - self.x_min as f64;
+    let scale = self.x_max as f64 - self.x_min as f64; // TODO: saturating sub, then cast
     let result = ratio * scale * -1.0;
     result as i16
   }
@@ -196,7 +185,7 @@ impl Canvas {
     let num = image_position as f64;
     let denom = image_scale as f64;
     let ratio = num / denom;
-    let scale = self.y_max as f64 - self.y_min as f64;
+    let scale = self.y_max as f64 - self.y_min as f64; // TODO: saturating sub, then cast
     let result = ratio * scale * -1.0;
     result as i16
   }

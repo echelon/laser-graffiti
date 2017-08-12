@@ -13,7 +13,6 @@ extern crate texture;
 mod arguments;
 mod drawing;
 mod error;
-mod laser;
 
 use arguments::Arguments;
 use drawing::Canvas;
@@ -21,39 +20,22 @@ use drawing::ImagePosition;
 use image::ConvertBuffer;
 use image::ImageBuffer;
 use image::Pixel;
-use lase::Point;
 use lase::tools::find_first_etherdream_dac;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use rscam::Frame;
 use std::sync::Arc;
-use std::sync::RwLock;
 use std::time::Instant;
 
 type ImageFrame = image::ImageBuffer<image::Rgb<u8>, Frame>;
 type ImageFrameRgba = ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
-const WIDTH: u32 = 640;
-const HEIGHT: u32 = 480;
 const THRESHOLD: u8 = 180;
 const TRACKING_POINTS : i32 = 5; // Num of points to blank.
-
-struct Drawing {
-  pub path: Vec<Point>,
-}
-
-impl Drawing {
-  pub fn new() -> Drawing {
-    Drawing { path: Vec::new() }
-  }
-}
 
 fn main() {
   let args = Arguments::parse_args();
 
-  let drawing = Arc::new(RwLock::new(Drawing::new()));
-  let drawing2 = drawing.clone();
-
-  let canvas = Arc::new(Canvas::new(WIDTH, HEIGHT, TRACKING_POINTS as usize, &args));
+  let canvas = Arc::new(Canvas::new(TRACKING_POINTS as usize, &args));
   let canvas2 = canvas.clone();
 
   let mut dac = find_first_etherdream_dac().expect("Unable to find DAC");
@@ -62,8 +44,6 @@ fn main() {
     let mut current_point = 0;
 
     dac.play_function(move |num_points: u16| {
-      //println!(">> LASER WANTS POINTS: {}", num_points);
-
       let num_points = num_points as usize;
 
       let payload = canvas.get_points(current_point, num_points)
@@ -75,12 +55,13 @@ fn main() {
     }).expect("Projection failed.");
   });
 
-  unused_webcam(drawing2, canvas2, &args);
+  unused_webcam(canvas2, &args);
 }
 
-fn to_grayscale(frame: ImageFrame) -> ImageFrameRgba {
+fn to_grayscale(frame: ImageFrame, args: &Arguments) -> ImageFrameRgba {
   let (width, height) = frame.dimensions();
-  let mut new_image : ImageFrameRgba = ImageBuffer::new(WIDTH, HEIGHT);
+  let mut new_image : ImageFrameRgba =
+      ImageBuffer::new(args.webcam_width, args.webcam_height);
 
   for i in 0..width {
     for j in 0..height {
@@ -119,15 +100,15 @@ fn find_laser_position(frame: ImageFrameRgba) -> Option<ImagePosition> {
   None
 }
 
-fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
-                 args: &Arguments) {
+fn unused_webcam(canvas: Arc<Canvas>, args: &Arguments) {
 
   let (sender, receiver) = std::sync::mpsc::channel();
   let mut tex: Option<Texture<_>> = None;
   let mut window: Option<PistonWindow> = None;
 
   if args.show_gui {
-    window = Some(WindowSettings::new("piston: image", [WIDTH, HEIGHT])
+    window = Some(WindowSettings::new("Webcam capture",
+        [args.webcam_width, args.webcam_height])
         .exit_on_esc(true)
         .build()
         .unwrap());
@@ -139,19 +120,20 @@ fn unused_webcam(mut drawing: Arc<RwLock<Drawing>>, mut canvas: Arc<Canvas>,
     let cam = camera_capture::create(args2.webcam_index).unwrap()
         .fps(30.0)
         .unwrap()
-        .resolution(WIDTH, HEIGHT)
+        .resolution(args2.webcam_width, args2.webcam_height)
         .unwrap()
         .start()
         .unwrap();
 
     for frame in cam {
-      let grayscale = to_grayscale(frame);
+      let grayscale = to_grayscale(frame, &args2);
       let converted: ImageFrameRgba = grayscale.convert();
 
       let maybe_pos = find_laser_position(converted);
       if let Some(pos) = maybe_pos {
         println!("Found Point : {:?}", pos);
-        canvas.add_point(pos, Instant::now());
+        canvas.add_point(pos, Instant::now())
+            .expect("Could not add points");
       }
 
       if let Err(_) = sender.send(grayscale) {

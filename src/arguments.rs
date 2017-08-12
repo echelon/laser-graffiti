@@ -9,8 +9,13 @@ use lase::tools::ETHERDREAM_Y_MIN;
 pub struct Arguments {
   /// Whether or not to show the GUI.
   pub show_gui: bool,
+
   /// Which hardware webcam to use.
   pub webcam_index: u32,
+  /// Width of the captured webcam image
+  pub webcam_width: u32,
+  /// Height of the captured webcam image
+  pub webcam_height: u32,
 
   /// Maximum projected X coordinate
   pub x_max: i16,
@@ -20,6 +25,7 @@ pub struct Arguments {
   pub y_max: i16,
   /// Minimum projected Y coordinate
   pub y_min: i16,
+
 }
 
 impl Arguments {
@@ -28,6 +34,8 @@ impl Arguments {
     let mut args = Arguments {
       show_gui: false,
       webcam_index: 0,
+      webcam_width: 640,
+      webcam_height: 480,
       x_max: ETHERDREAM_X_MAX/4,
       x_min: ETHERDREAM_X_MIN/4,
       y_max: ETHERDREAM_Y_MAX/4,
@@ -45,8 +53,16 @@ impl Arguments {
             "Show the GUI.");
 
       parser.refer(&mut args.webcam_index)
-          .add_option(&["-w", "--webcam"], Store,
+          .add_option(&["-n", "--webcam"], Store,
             "Numeric hardware index of webcam to use: /dev/video{N}");
+
+      parser.refer(&mut args.webcam_width)
+          .add_option(&["-w", "--width"], Store,
+            "Width of the webcam capture.");
+
+      parser.refer(&mut args.webcam_height)
+          .add_option(&["-h", "--height"], Store,
+            "Height of the webcam capture.");
 
       parser.refer(&mut args.x_max)
           .add_option(&["--x-max"], Store, "Maximum projected x coordinate");
