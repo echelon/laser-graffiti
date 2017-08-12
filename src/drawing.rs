@@ -44,6 +44,10 @@ pub struct Canvas {
   x_min: i16,
   y_max: i16,
   y_min: i16,
+
+  /// Projected colors
+  red: u16,
+  blue: u16,
 }
 
 impl Canvas {
@@ -59,6 +63,8 @@ impl Canvas {
       x_min: args.x_min,
       y_max: args.y_max,
       y_min: args.y_min,
+      red: args.red,
+      blue: args.blue,
     }
   }
 
@@ -100,9 +106,9 @@ impl Canvas {
             interpolation.push(Point::xy_rgb(
               xb,
               yb,
-              ETHERDREAM_COLOR_MAX/4,
-              0,
-              0,
+              self.red,
+              0, // No green!
+              self.blue,
             ));
           }
         },
@@ -115,9 +121,9 @@ impl Canvas {
       laser_points.push(Point::xy_rgb(
         x,
         y,
-        ETHERDREAM_COLOR_MAX/4,
+        self.red,
         0, // Cannot have green
-        0,
+        self.blue,
       ));
     }
 
@@ -154,7 +160,7 @@ impl Canvas {
         let first_pt = laser_points.get(0).unwrap();
         let last_pt = laser_points.last().unwrap();
 
-        let interpolation_pts = Self::interpolate_points(
+        let interpolation_pts = self.interpolate_points(
           last_pt, first_pt, self.tracking_points);
 
         let j = (i - laser_points.len()) % total_len;
@@ -198,7 +204,7 @@ impl Canvas {
     points
   }
 
-  fn interpolate_points(last_point: &Point, next_point: &Point,
+  fn interpolate_points(&self, last_point: &Point, next_point: &Point,
                         num_interpolation_points: usize) -> Vec<Point> {
     let mut buf = Vec::with_capacity(num_interpolation_points);
 
@@ -215,9 +221,9 @@ impl Canvas {
       buf.push(Point::xy_rgb(
         xb,
         yb,
-        ETHERDREAM_COLOR_MAX/4,
+        self.red,
         0,
-        0,
+        self.blue,
       ));
     }
 

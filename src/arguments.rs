@@ -4,6 +4,7 @@ use lase::tools::ETHERDREAM_X_MAX;
 use lase::tools::ETHERDREAM_X_MIN;
 use lase::tools::ETHERDREAM_Y_MAX;
 use lase::tools::ETHERDREAM_Y_MIN;
+use lase::tools::ETHERDREAM_COLOR_MAX;
 
 #[derive(Clone)]
 pub struct Arguments {
@@ -26,6 +27,10 @@ pub struct Arguments {
   /// Minimum projected Y coordinate
   pub y_min: i16,
 
+  /// Projected red.
+  pub red: u16,
+  /// Projected blue.
+  pub blue: u16,
 }
 
 impl Arguments {
@@ -40,6 +45,8 @@ impl Arguments {
       x_min: ETHERDREAM_X_MIN/4,
       y_max: ETHERDREAM_Y_MAX/4,
       y_min: ETHERDREAM_Y_MIN/4,
+      red: ETHERDREAM_COLOR_MAX,//4,
+      blue: ETHERDREAM_COLOR_MAX,//4,
     };
 
     {
@@ -75,6 +82,11 @@ impl Arguments {
 
       parser.refer(&mut args.y_min)
           .add_option(&["--y-min"], Store, "Minimum projected y coordinate");
+
+      parser.refer(&mut args.red)
+          .add_option(&["--red"], Store, "Projected red value");
+      parser.refer(&mut args.blue)
+          .add_option(&["--blue"], Store, "Projected blue value");
 
       parser.parse_args_or_exit();
     }
