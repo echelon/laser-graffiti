@@ -6,6 +6,7 @@ extern crate camera_capture;
 extern crate image;
 extern crate lase;
 extern crate piston_window;
+extern crate piston;
 extern crate router;
 extern crate rscam;
 extern crate texture;
@@ -21,6 +22,9 @@ use image::ConvertBuffer;
 use image::ImageBuffer;
 use image::Pixel;
 use lase::tools::find_first_etherdream_dac;
+use piston_window::PressEvent;
+use piston_window::Button;
+//use piston::input::Key;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use rscam::Frame;
 use std::sync::Arc;
@@ -115,6 +119,7 @@ fn unused_webcam(canvas: Arc<Canvas>, args: &Arguments) {
   }
 
   let args2 = (*args).clone();
+  let canvas2 = canvas.clone();
 
   let imgthread = std::thread::spawn(move || {
     let cam = camera_capture::create(args2.webcam_index).unwrap()
@@ -162,6 +167,11 @@ fn unused_webcam(canvas: Arc<Canvas>, args: &Arguments) {
           piston_window::image(t, c.transform, g);
         }
       });
+
+      if let Some(button) = e.press_args() {
+        println!("Pressed button: {:?}", button);
+        canvas2.reset();
+      }
     }
   }
 

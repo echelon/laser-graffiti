@@ -75,11 +75,20 @@ impl Canvas {
     }
   }
 
-  /*/// Clear the canvas.
+  /// Clear the canvas.
   pub fn reset(&self) -> Result<(), PaintError> {
-    self.camera_data.clear();
+    {
+      let mut time = self.last_added_time.lock()?;
+      *time = None;
+    }
+
+    {
+      let mut points = self.laser_points.write()?;
+      *points = Vec::new();
+    }
+
     Ok(())
-  }*/
+  }
 
   /// Add a point to the canvas.
   pub fn add_point(&self, position: ImagePosition, time: Instant)

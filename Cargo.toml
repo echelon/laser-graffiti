@@ -19,6 +19,7 @@
   lase = "0.0.1"
   piston-texture = "0.4"
   piston_window = "0.40"
+  piston = "0.32.0"
   router = "0.5"
   rscam = "0.5.2"
 
