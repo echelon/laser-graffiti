@@ -48,6 +48,10 @@ pub struct Canvas {
   /// Projected colors
   red: u16,
   blue: u16,
+
+  /// Projected offset
+  x_offset: i16,
+  y_offset: i16,
 }
 
 impl Canvas {
@@ -65,6 +69,8 @@ impl Canvas {
       y_min: args.y_min,
       red: args.red,
       blue: args.blue,
+      x_offset: args.x_offset,
+      y_offset: args.y_offset,
     }
   }
 
@@ -182,18 +188,22 @@ impl Canvas {
     let num = image_position as f64;
     let denom = image_scale as f64;
     let ratio = num / denom;
-    let scale = self.x_max as f64 - self.x_min as f64; // TODO: saturating sub, then cast
+    let scale = self.x_max.saturating_sub(self.x_min) as f64;
     let result = ratio * scale * -1.0;
-    result as i16
+    let result = result as i16;
+
+    result.saturating_add(self.x_offset)
   }
 
   fn map_y_point(&self, image_position: u32, image_scale: u32) -> i16 {
     let num = image_position as f64;
     let denom = image_scale as f64;
     let ratio = num / denom;
-    let scale = self.y_max as f64 - self.y_min as f64; // TODO: saturating sub, then cast
+    let scale = self.y_max.saturating_sub(self.y_min) as f64;
     let result = ratio * scale * -1.0;
-    result as i16
+    let result = result as i16;
+
+    result.saturating_add(self.y_offset)
   }
 
   fn blank_points(num_points: usize) -> Vec<Point> {

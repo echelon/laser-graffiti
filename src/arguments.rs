@@ -31,6 +31,12 @@ pub struct Arguments {
   pub red: u16,
   /// Projected blue.
   pub blue: u16,
+
+  /// Projected x offset
+  pub x_offset: i16,
+
+  /// Projected y offset
+  pub y_offset: i16,
 }
 
 impl Arguments {
@@ -47,6 +53,8 @@ impl Arguments {
       y_min: ETHERDREAM_Y_MIN/4,
       red: ETHERDREAM_COLOR_MAX,//4,
       blue: ETHERDREAM_COLOR_MAX,//4,
+      x_offset: 0,
+      y_offset: 0,
     };
 
     {
@@ -87,6 +95,12 @@ impl Arguments {
           .add_option(&["--red"], Store, "Projected red value");
       parser.refer(&mut args.blue)
           .add_option(&["--blue"], Store, "Projected blue value");
+
+      parser.refer(&mut args.x_offset)
+          .add_option(&["--x-offset"], Store, "X offset");
+
+      parser.refer(&mut args.y_offset)
+          .add_option(&["--y-offset"], Store, "Y offset");
 
       parser.parse_args_or_exit();
     }
