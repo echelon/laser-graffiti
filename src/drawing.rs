@@ -5,8 +5,9 @@ use arguments::Arguments;
 use error::PaintError;
 use lase::Point;
 use lase::tools::ETHERDREAM_COLOR_MAX;
-use std::sync::RwLock;
 use std::sync::Mutex;
+use std::sync::RwLock;
+use std::time::Duration;
 use std::time::Instant;
 
 /// Position of the laser pointer in a webcam frame.
@@ -93,6 +94,21 @@ impl Canvas {
 
       let mut interpolation = Vec::new();
 
+      let mut is_blank = false;
+
+      // FIXME: Inefficient locking.
+      {
+        let mut t = self.last_added_time.lock()?;
+        if t.is_some() {
+          let last_time = t.unwrap();
+          let duration = time.duration_since(last_time);
+          if duration > Duration::from_secs(1) {
+            is_blank = true;
+            println!("New Blank Point");
+          }
+        }
+      }
+
       match laser_points.last() {
         None => {},
         Some(last_point) => {
@@ -109,13 +125,13 @@ impl Canvas {
             let xb = last_x.saturating_sub((x_diff * percent) as i16);
             let yb = last_y.saturating_sub((y_diff * percent) as i16);
 
-            interpolation.push(Point::xy_rgb(
-              xb,
-              yb,
-              self.red,
-              0, // No green!
-              self.blue,
-            ));
+            let point = if is_blank {
+              Point::xy_blank(xb, yb)
+            } else {
+              Point::xy_rgb(xb, yb, self.red, 0, self.blue) // No green!
+            };
+
+            interpolation.push(point);
           }
         },
       }
@@ -167,7 +183,7 @@ impl Canvas {
         let last_pt = laser_points.last().unwrap();
 
         let interpolation_pts = self.interpolate_points(
-          last_pt, first_pt, self.tracking_points);
+          last_pt, first_pt, self.tracking_points, true);
 
         let j = (i - laser_points.len()) % total_len;
 
@@ -215,7 +231,8 @@ impl Canvas {
   }
 
   fn interpolate_points(&self, last_point: &Point, next_point: &Point,
-                        num_interpolation_points: usize) -> Vec<Point> {
+                        num_interpolation_points: usize, blank: bool)
+                        -> Vec<Point> {
     let mut buf = Vec::with_capacity(num_interpolation_points);
 
     let last_x = last_point.x;
@@ -228,13 +245,13 @@ impl Canvas {
       let xb = last_x.saturating_sub((x_diff * percent) as i16);
       let yb = last_y.saturating_sub((y_diff * percent) as i16);
 
-      buf.push(Point::xy_rgb(
-        xb,
-        yb,
-        self.red,
-        0,
-        self.blue,
-      ));
+      let point = if blank {
+        Point::xy_blank(xb, yb)
+      } else {
+        Point::xy_rgb(xb, yb, self.red, 0, self.blue)
+      };
+
+      buf.push(point);
     }
 
     buf
