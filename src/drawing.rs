@@ -119,7 +119,7 @@ impl Canvas {
           let x_diff = last_x.saturating_sub(x) as f64;
           let y_diff = last_y.saturating_sub(y) as f64;
 
-          const interpolate_pts : usize = 200;
+          const interpolate_pts : usize = 20;
           for i in 0 .. interpolate_pts {
             let percent = i as f64 / interpolate_pts as f64;
             let xb = last_x.saturating_sub((x_diff * percent) as i16);
