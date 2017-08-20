@@ -1,16 +1,14 @@
 [package]
-  publish = false # NEVER PUBLICLY PUBLISH
   authors = [ "Brandon Thomas <bt@brand.io>", "Brandon Thomas <echelon@gmail.com>" ]
-  description = "Paint with Lasers"
+  description = "Laser Graffiti"
   license = "None at the moment"
-  name = "paint-with-lasers"
+  name = "laser-graffiti"
   readme = "README.md"
-  repository = "https://github.com/echelon/paint-with-lasers"
-  version = "0.0.1"
-  #build = "build.rs"
+  repository = "https://github.com/echelon/laser-graffiti"
+  version = "0.1.0"
 
 [[bin]]
-  name = "paint"
+  name = "graffiti"
 
 [dependencies]
   argparse = "0.2"
