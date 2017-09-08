@@ -2,6 +2,7 @@
 // Painting with Lasers
 
 use arguments::Arguments;
+use beam::Scaler;
 use error::PaintError;
 use lase::Point;
 use lase::tools::ETHERDREAM_COLOR_MAX;
@@ -33,6 +34,10 @@ pub struct Canvas {
   // immutability ergonomics.
   last_added_time: Mutex<Option<Instant>>,
 
+  /// Scale dimensions
+  x_scaler: Scaler<u32, i16>,
+  y_scaler: Scaler<u32, i16>,
+
   /// Camera dimensions.
   image_width: u32,
   image_height: u32,
@@ -61,6 +66,18 @@ impl Canvas {
     Canvas {
       laser_points: RwLock::new(Vec::new()),
       last_added_time: Mutex::new(None),
+      x_scaler: Scaler::<u32, i16>::new(
+        0,
+        args.webcam_width,
+        args.x_min,
+        args.x_max
+      ),
+      y_scaler: Scaler::<u32, i16>::new(
+        0,
+        args.webcam_height,
+        args.y_min,
+        args.y_max
+      ),
       image_width: args.webcam_width,
       image_height: args.webcam_height,
       tracking_points: tracking_points,
@@ -96,8 +113,8 @@ impl Canvas {
     { // Scope for write lock
       let mut laser_points = self.laser_points.write()?;
 
-      let x = self.map_x_point(position.x, self.image_width);
-      let y = self.map_y_point(position.y, self.image_height);
+      let x = self.x_scaler.scale(position.x) * -1; // Flip
+      let y = self.y_scaler.scale(position.y) * -1; // Flip
 
       println!("New point xy: {}, {}", x, y);
 
@@ -207,28 +224,6 @@ impl Canvas {
       points: buf,
       next_cursor: i,
     })
-  }
-
-  fn map_x_point(&self, image_position: u32, image_scale: u32) -> i16 {
-    let num = image_position as f64;
-    let denom = image_scale as f64;
-    let ratio = num / denom;
-    let scale = self.x_max.saturating_sub(self.x_min) as f64;
-    let result = ratio * scale * -1.0;
-    let result = result as i16;
-
-    result.saturating_add(self.x_offset)
-  }
-
-  fn map_y_point(&self, image_position: u32, image_scale: u32) -> i16 {
-    let num = image_position as f64;
-    let denom = image_scale as f64;
-    let ratio = num / denom;
-    let scale = self.y_max.saturating_sub(self.y_min) as f64;
-    let result = ratio * scale * -1.0;
-    let result = result as i16;
-
-    result.saturating_add(self.y_offset)
   }
 
   fn blank_points(num_points: usize) -> Vec<Point> {

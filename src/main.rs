@@ -2,11 +2,12 @@
 // Painting with Lasers
 
 extern crate argparse;
+extern crate beam;
 extern crate camera_capture;
 extern crate image;
 extern crate lase;
-extern crate piston_window;
 extern crate piston;
+extern crate piston_window;
 extern crate router;
 extern crate rscam;
 extern crate texture;
@@ -22,9 +23,8 @@ use image::ConvertBuffer;
 use image::ImageBuffer;
 use image::Pixel;
 use lase::tools::find_first_etherdream_dac;
-use piston_window::PressEvent;
 use piston_window::Button;
-//use piston::input::Key;
+use piston_window::PressEvent;
 use piston_window::{PistonWindow, Texture, WindowSettings, TextureSettings, clear};
 use rscam::Frame;
 use std::sync::Arc;

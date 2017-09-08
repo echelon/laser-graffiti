@@ -5,19 +5,20 @@
   name = "laser-graffiti"
   readme = "README.md"
   repository = "https://github.com/echelon/laser-graffiti"
-  version = "0.1.0"
+  version = "0.1.1"
 
 [[bin]]
   name = "graffiti"
 
 [dependencies]
   argparse = "0.2"
+  beam = "0.1"
   camera_capture = "0.3"
   image = "0.7"
   lase = "0.0.1"
+  piston = "0.32.0"
   piston-texture = "0.4"
   piston_window = "0.40"
-  piston = "0.32.0"
   router = "0.5"
   rscam = "0.5.2"
 
